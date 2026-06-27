@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NØLL // RSI Divergence Scanner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#05080b;--bg2:#0a0f15;--panel:#0b1218;--panel2:#0e161d;
+  --line:rgba(0,229,255,.14);--line-strong:rgba(0,229,255,.35);
+  --cyan:#00e5ff;--ink:#dfeef2;--muted:#6f8893;--faint:#46606b;
+  --fresh:#36f5a0;--fresh-bg:rgba(54,245,160,.10);--amber:#ffb02e;--red:#ff5468;--radius:4px;
+}
+*{box-sizing:border-box}html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:"IBM Plex Mono",monospace;font-size:14px;line-height:1.5;min-height:100vh;
+  background-image:linear-gradient(rgba(0,229,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.035) 1px,transparent 1px),radial-gradient(900px 500px at 80% -10%,rgba(0,229,255,.06),transparent 60%);
+  background-size:42px 42px,42px 42px,100% 100%;}
+.wrap{max-width:1280px;margin:0 auto;padding:22px 22px 60px}
+h1{font-family:"Chakra Petch",sans-serif}
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:14px;justify-content:space-between;border:1px solid var(--line);border-radius:var(--radius);background:linear-gradient(180deg,var(--panel),var(--bg2));padding:16px 18px;position:relative;overflow:hidden}
+.top::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--cyan);box-shadow:0 0 18px var(--cyan)}
+.logo{font-family:"Chakra Petch";font-weight:700;font-size:22px;letter-spacing:1px;white-space:nowrap}
+.logo .n{color:var(--cyan);text-shadow:0 0 14px rgba(0,229,255,.55)}.logo .sub{color:var(--muted);font-weight:400;font-size:12px}
+.tag{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:2px}
+.live{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--fresh);box-shadow:0 0 10px var(--fresh);animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:16px 0}
+.ctrl{display:flex;align-items:center;gap:7px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:7px 11px}
+.ctrl label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+select,button{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--ink);background:transparent;border:none;outline:none;cursor:pointer}
+select{background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);padding:5px 8px}
+select:hover{border-color:var(--line-strong)}
+.btn{background:var(--panel2);border:1px solid var(--line-strong);border-radius:var(--radius);padding:8px 16px;color:var(--cyan);letter-spacing:1px;text-transform:uppercase;font-size:12px;font-weight:600;transition:.15s}
+.btn:hover{background:rgba(0,229,255,.10);box-shadow:0 0 14px rgba(0,229,255,.25)}.btn:active{transform:translateY(1px)}.btn[disabled]{opacity:.5;cursor:not-allowed}
+.toggle{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:7px 11px}
+.toggle label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;cursor:pointer}
+.sw{width:38px;height:20px;border-radius:20px;background:#16242c;border:1px solid var(--line);position:relative;transition:.2s;flex:none}
+.sw::after{content:"";position:absolute;top:1px;left:1px;width:16px;height:16px;border-radius:50%;background:var(--muted);transition:.2s}
+.toggle.on .sw{background:rgba(54,245,160,.18);border-color:var(--fresh)}
+.toggle.on .sw::after{transform:translateX(18px);background:var(--fresh);box-shadow:0 0 10px var(--fresh)}
+.countdown{margin-left:auto;font-size:12px;color:var(--muted)}.countdown b{color:var(--cyan)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:6px 0 20px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px}
+.stat .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px}
+.stat .v{font-family:"Chakra Petch";font-size:30px;font-weight:700;margin-top:6px;line-height:1}
+.stat.c .v{color:var(--cyan)}.stat.f .v{color:var(--fresh)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:14px}
+.card{background:linear-gradient(180deg,var(--panel),var(--bg2));border:1px solid var(--line);border-radius:var(--radius);padding:15px 16px;position:relative;overflow:hidden;transition:.15s}
+.card:hover{border-color:var(--line-strong);transform:translateY(-2px)}
+.card.fresh{border-color:rgba(54,245,160,.45)}
+.card.fresh::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--fresh);box-shadow:0 0 14px var(--fresh)}
+.chead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+.sym{font-family:"Chakra Petch";font-size:20px;font-weight:700}.sym .q{color:var(--faint);font-size:13px;font-weight:400}
+.badge{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;padding:3px 8px;border-radius:20px;border:1px solid}
+.badge.fresh{color:var(--fresh);border-color:var(--fresh);background:var(--fresh-bg)}.badge.old{color:var(--muted);border-color:var(--line)}
+.viz{display:flex;align-items:flex-end;gap:14px;height:74px;padding:8px 4px;margin:2px 0 12px;border-bottom:1px dashed var(--line)}
+.dip{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px}
+.bar{width:100%;border-radius:2px 2px 0 0}
+.bar.d1{background:linear-gradient(180deg,var(--red),rgba(255,84,104,.25))}
+.bar.d2{background:linear-gradient(180deg,var(--fresh),rgba(54,245,160,.25))}
+.dlab{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+.dval{font-family:"Chakra Petch";font-size:15px;font-weight:600}
+.rows{display:flex;flex-direction:column;gap:6px;font-size:12.5px}
+.row{display:flex;justify-content:space-between;gap:10px}.row .lbl{color:var(--muted)}.row .val{color:var(--ink);text-align:right}
+.val.up{color:var(--fresh)}.val.cy{color:var(--cyan)}
+.cfoot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:13px;padding-top:11px;border-top:1px solid var(--line)}
+.ts{font-size:10.5px;color:var(--faint)}
+.tv{font-size:11px;color:var(--cyan);text-decoration:none;border:1px solid var(--line);border-radius:var(--radius);padding:5px 10px;text-transform:uppercase;letter-spacing:1px;transition:.15s;white-space:nowrap}
+.tv:hover{background:rgba(0,229,255,.10);border-color:var(--line-strong)}
+.state{text-align:center;padding:70px 20px;color:var(--muted)}.state .big{font-family:"Chakra Petch";font-size:20px;color:var(--ink);margin-bottom:8px}.state.err .big{color:var(--red)}
+.skel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);height:240px;position:relative;overflow:hidden}
+.skel::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(0,229,255,.06),transparent);animation:shimmer 1.3s infinite}
+@keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+.errbox{margin-top:14px;font-size:11px;color:var(--amber);background:rgba(255,176,46,.06);border:1px solid rgba(255,176,46,.25);border-radius:var(--radius);padding:10px 12px;max-height:140px;overflow:auto}
+.footnote{margin-top:30px;font-size:11px;color:var(--faint);line-height:1.7;border-top:1px solid var(--line);padding-top:16px}.footnote b{color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div>
+      <div class="logo"><span class="n">NØLL</span> <span class="sub">// rsi divergence scanner</span></div>
+      <div class="tag">boğa uyumsuzluğu · binance · canlı</div>
+    </div>
+    <div class="live"><span class="dot"></span><span id="liveTxt">başlatılıyor…</span></div>
+  </div>
+
+  <div class="controls">
+    <div class="ctrl"><label>zaman</label>
+      <select id="interval">
+        <option value="5m">5m</option>
+        <option value="15m">15m</option>
+        <option value="30m">30m</option>
+        <option value="1h" selected>1h</option>
+        <option value="2h">2h</option>
+        <option value="4h">4h</option>
+        <option value="1d">1d</option>
+      </select>
+    </div>
+    <div class="ctrl"><label>yenile</label>
+      <select id="refresh">
+        <option value="0">manuel</option>
+        <option value="30">30s</option>
+        <option value="60" selected>60s</option>
+        <option value="120">2dk</option>
+        <option value="300">5dk</option>
+      </select>
+    </div>
+    <div class="toggle" id="freshToggle"><span class="sw"></span><label>sadece taze</label></div>
+    <div class="toggle" id="allToggle"><span class="sw"></span><label>tüm USDT</label></div>
+    <button class="btn" id="scanBtn">tara ↻</button>
+    <div class="countdown" id="countdown"></div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="k">taranan</div><div class="v" id="sScanned">—</div></div>
+    <div class="stat c"><div class="k">sinyal</div><div class="v" id="sCount">—</div></div>
+    <div class="stat f"><div class="k">taze sinyal</div><div class="v" id="sFresh">—</div></div>
+    <div class="stat"><div class="k">son güncelleme</div><div class="v" id="sUpd" style="font-size:18px">—</div></div>
+  </div>
+
+  <div id="content"></div>
+
+  <div class="footnote">
+    <b>nasıl okunur:</b> her kart bir boğa uyumsuzluğu gösterir — fiyat iki kez ~aynı dibe iner (kırmızı = 1. dip),
+    ama RSI ikinci dipte ilkine değmeyip daha yüksek kalır (yeşil = 2. dip). bu, momentumun zayıfladığını ve
+    yukarı dönüş ihtimalini işaret eder. <b>"taze"</b> = sinyalin 2. dibi son birkaç mum içinde oluştu.
+    <b>"tüm USDT"</b> açıkken borsadaki tüm USDT pariteleri taranır (daha yavaş).<br>
+    bu bir yatırım tavsiyesi değildir; sinyalleri kendi grafiğinde teyit et.
+  </div>
+</div>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>
