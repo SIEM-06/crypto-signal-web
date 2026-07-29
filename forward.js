@@ -53,12 +53,16 @@ export function recordSignals(storage, signals, priceBySymbol, plan = PLAN) {
   return added;
 }
 
-// Acik bir kaydi, kayit anindan itibaren gelen mumlarla degerlendir.
-// candles: kayit sonrasi mumlar (openTime >= recordedAt olanlar filtrelenmis olmali).
+// Acik bir kaydi, gelen mumlarla degerlendir.
+// candles: kayit anindaki (yarim) mum DAHIL olmali (openTime, kayittan bir interval oncesine kadar geri gidebilir).
+// Adil kural: kayit anindaki yarim mumun high/low'u stop/hedef SAYILMAZ (bir kismi kayittan onceki
+// fiyat hareketi olabilir); o mumdan sadece kapanis, "son fiyat" olarak alinir.
 export function evaluateRecord(rec, candles) {
   const r = { ...rec };
   let bars = 0;
   for (const c of candles) {
+    const partial = c.openTime <= r.recordedAt; // kayit aninda olusmakta olan mum
+    if (partial) { r.lastPrice = c.close; continue; }
     bars++;
     if (c.low <= r.stop) { r.status = "sl"; r.resolvedAt = c.openTime; r.lastPrice = r.stop; break; }
     if (c.high >= r.target) { r.status = "tp"; r.resolvedAt = c.openTime; r.lastPrice = r.target; break; }
@@ -66,6 +70,17 @@ export function evaluateRecord(rec, candles) {
     if (bars >= FWD.horizonBars) { r.status = "expired"; r.resolvedAt = c.openTime; break; }
   }
   r.barsSeen = Math.max(r.barsSeen || 0, bars);
+  r.lastPct = Math.round(((r.lastPrice / r.entry) - 1) * 10000) / 100;
+  return r;
+}
+
+// Anlik (ticker) fiyati acik kayda uygula: son fiyati gunceller ve
+// anlik fiyat stopu/hedefi gecmisse hemen sonuclandirir.
+export function applyLivePrice(rec, livePrice, now = Date.now()) {
+  if (rec.status !== "open" || !livePrice) return rec;
+  const r = { ...rec, lastPrice: livePrice };
+  if (livePrice <= r.stop) { r.status = "sl"; r.resolvedAt = now; r.lastPrice = r.stop; }
+  else if (livePrice >= r.target) { r.status = "tp"; r.resolvedAt = now; r.lastPrice = r.target; }
   r.lastPct = Math.round(((r.lastPrice / r.entry) - 1) * 10000) / 100;
   return r;
 }
