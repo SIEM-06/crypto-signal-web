@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NØLL // Canlı Test</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div>
+      <div class="logo"><span class="n">NØLL</span> <span class="sub">// canlı test</span></div>
+      <div class="tag">sinyaller gerçek zamanda doğru mu çıkıyor?</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px">
+      <a class="navlink" href="./index.html">← canlı panel</a>
+      <a class="navlink" href="./backtest.html">backtest ↗</a>
+      <div class="live"><span class="dot"></span><span id="liveTxt">hazır</span></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="ctrl"><label>yenile</label>
+      <select id="refresh">
+        <option value="0">manuel</option>
+        <option value="60" selected>60s</option>
+        <option value="120">2dk</option>
+        <option value="300">5dk</option>
+      </select>
+    </div>
+    <button class="btn" id="checkBtn">durumu güncelle ↻</button>
+    <button class="btn danger" id="clearBtn">kayıtları temizle</button>
+    <div class="countdown" id="countdown"></div>
+  </div>
+
+  <div id="summary"></div>
+  <div id="content"></div>
+
+  <div class="footnote">
+    <b>nasıl çalışır:</b> canlı paneldeki her tarama, çıkan <b>taze</b> sinyalleri o anki fiyatla (giriş) buraya otomatik kaydeder.
+    bu sayfa açık kayıtları Binance mumlarıyla takip eder: fiyat <b>hedefe</b> ulaşırsa sinyal <b>doğru ✓</b>,
+    <b>stopa</b> düşerse <b>yanlış ✗</b> sayılır; belirli süre ikisi de olmazsa "süre doldu" olur.
+    kayıtlar bu tarayıcıda saklanır (cihaz-bazlı). sinyal toplamak için arada canlı paneli çalıştır.<br>
+    bu bir yatırım tavsiyesi değildir.
+  </div>
+</div>
+<script type="module" src="./forward-app.js"></script>
+</body>
+</html>

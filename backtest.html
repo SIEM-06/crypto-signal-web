@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NØLL // Backtest</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div>
+      <div class="logo"><span class="n">NØLL</span> <span class="sub">// backtest</span></div>
+      <div class="tag">boğa uyumsuzluğu · geçmiş performans</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px">
+      <a class="navlink" href="./index.html">← canlı panel</a>
+      <a class="navlink" href="./forward.html">canlı test ↗</a>
+      <div class="live"><span class="dot"></span><span id="liveTxt">hazır</span></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="ctrl"><label>zaman</label>
+      <select id="interval">
+        <option value="15m">15m</option>
+        <option value="30m">30m</option>
+        <option value="1h" selected>1h</option>
+        <option value="2h">2h</option>
+        <option value="4h">4h</option>
+        <option value="1d">1d</option>
+      </select>
+    </div>
+    <div class="ctrl"><label>ufuk (mum)</label><input type="number" id="horizon" value="24" min="3" max="200"></div>
+    <div class="ctrl"><label>hedef (R)</label><input type="number" id="rmult" value="2" min="0.5" max="10" step="0.5"></div>
+    <div class="ctrl"><label>stop tampon %</label><input type="number" id="stopbuf" value="0.5" min="0" max="5" step="0.1"></div>
+    <div class="toggle" id="allToggle"><span class="sw"></span><label>tüm USDT</label></div>
+    <button class="btn" id="runBtn">backtest çalıştır ↻</button>
+    <div class="countdown" id="countdown"></div>
+  </div>
+
+  <div id="summary"></div>
+  <div id="content"></div>
+
+  <div class="footnote">
+    <b>nasıl çalışır:</b> her geçmiş sinyalde, sinyal onaylandığı anda (2. dip + onay mumları) girilir; stop çift dibin
+    biraz altına, hedef risk kadar mesafenin R katına konur. En fazla "ufuk" kadar mum tutulur. İşlem ücreti dahildir.<br>
+    <b>beklenti (R)</b> işlem başına ortalama kaç birim risk kazanıldığını gösterir — pozitifse sistem matematiksel olarak artıdadır.
+    <b>profit factor</b> = toplam kâr / toplam zarar (1'in üstü iyi). <b>az işlemle çıkan sonuçlara güvenme</b> (örneklem küçükse rastlantı olabilir).<br>
+    bu bir yatırım tavsiyesi değildir; geçmiş performans gelecek için garanti değildir.
+  </div>
+</div>
+<script type="module" src="./backtest-app.js"></script>
+</body>
+</html>
