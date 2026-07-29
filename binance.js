@@ -11,6 +11,7 @@ const ALLOWED_PATHS = new Set([
   "/api/v3/klines",
   "/api/v3/exchangeInfo",
   "/api/v3/ticker/24hr",
+  "/api/v3/ticker/price",
 ]);
 
 const BASE = "https://data-api.binance.vision";
