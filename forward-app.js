@@ -1,20 +1,34 @@
-import { getRecords, updateRecords, evaluateRecord, clearRecords, removeRecord, fwdStats } from "./forward.js";
+import { getRecords, updateRecords, evaluateRecord, applyLivePrice, clearRecords, removeRecord, fwdStats } from "./forward.js";
 import { SOURCE, BINANCE_BASE, CONCURRENCY } from "./config.js";
 
 const $ = (id) => document.getElementById(id);
 let busy = false, timer = null, countdownTimer = null, nextAt = 0;
 const storage = window.localStorage;
 
+const INTERVAL_MS = {
+  "1m": 60e3, "3m": 180e3, "5m": 300e3, "15m": 900e3, "30m": 1800e3,
+  "1h": 3600e3, "2h": 7200e3, "4h": 14400e3, "6h": 21600e3, "8h": 28800e3,
+  "12h": 43200e3, "1d": 86400e3, "3d": 259200e3, "1w": 604800e3,
+};
+
 function apiUrl(path, params) {
   const qs = new URLSearchParams(params).toString();
   if (SOURCE === "proxy") return `/api/binance?path=${encodeURIComponent(path)}&${qs}`;
   return `${BINANCE_BASE}${path}?${qs}`;
 }
-async function fetchKlinesSince(symbol, interval, startTime) {
+async function fetchKlinesSince(symbol, interval, recordedAt) {
+  // Kayit anindaki YARIM mum da dahil olsun diye bir interval geriden basla.
+  const startTime = recordedAt - (INTERVAL_MS[interval] || 3600e3);
   const r = await fetch(apiUrl("/api/v3/klines", { symbol, interval, startTime, limit: 1000 }));
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   const rows = await r.json();
   return rows.map((x) => ({ openTime: +x[0], open: +x[1], high: +x[2], low: +x[3], close: +x[4] }));
+}
+async function fetchTicker(symbol) {
+  const r = await fetch(apiUrl("/api/v3/ticker/price", { symbol }));
+  if (!r.ok) throw new Error(`ticker HTTP ${r.status}`);
+  const data = await r.json();
+  return parseFloat(data.price);
 }
 
 const fmtTime = (ms) => new Date(ms).toLocaleString("tr-TR", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" });
@@ -116,7 +130,13 @@ async function check() {
         const t = open[idx++];
         try {
           const candles = await fetchKlinesSince(t.symbol, t.interval, t.recordedAt);
-          evaluated[t.id] = evaluateRecord(t, candles);
+          let ev = evaluateRecord(t, candles);
+          if (ev.status === "open") {
+            // Mumlar sonuclandirmadiysa ANLIK fiyati al: son fiyat canli guncellensin,
+            // anlik fiyat stopu/hedefi gectiyse hemen sonuclansin.
+            try { ev = applyLivePrice(ev, await fetchTicker(t.symbol)); } catch {}
+          }
+          evaluated[t.id] = ev;
         } catch { /* bu tur atla, sonraki kontrolde tekrar dener */ }
         finally { done++; $("countdown").innerHTML = open.length ? `kontrol: <b>${done}/${open.length}</b>` : ""; }
       }
