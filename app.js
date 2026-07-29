@@ -1,4 +1,6 @@
 import { detectSignals } from "./detector.js";
+import { makePlan } from "./tradeplan.js";
+import { recordSignals } from "./forward.js";
 import {
   SOURCE, BINANCE_BASE, DEFAULT_SYMBOLS, KLINE_LIMIT, CONCURRENCY,
   EXCLUDE_PATTERNS, EXCLUDE_STABLES, PARAMS,
@@ -43,6 +45,7 @@ async function fetchAllUsdtSymbols() {
 async function runPool(symbols, interval, onProgress) {
   const results = [];
   const errors = [];
+  const lastPrice = {};   // sembol -> son kapanis (plan/giris fiyati icin)
   let done = 0;
   let idx = 0;
 
@@ -51,6 +54,7 @@ async function runPool(symbols, interval, onProgress) {
       const sym = symbols[idx++];
       try {
         const candles = await fetchKlines(sym, interval);
+        if (candles.length) lastPrice[sym] = candles[candles.length - 1].close;
         const sigs = detectSignals(candles, sym, interval, PARAMS);
         results.push(...sigs);
       } catch (e) {
@@ -63,7 +67,7 @@ async function runPool(symbols, interval, onProgress) {
   }
   const workers = Array.from({ length: Math.min(CONCURRENCY, symbols.length) }, worker);
   await Promise.all(workers);
-  return { results, errors };
+  return { results, errors, lastPrice };
 }
 
 // ---- Bicimlendirme ----
@@ -72,10 +76,20 @@ const fmtClock = (ms) => new Date(ms).toLocaleTimeString("tr-TR", { hour: "2-dig
 const price = (v) => v >= 1 ? v.toLocaleString("tr-TR", { maximumFractionDigits: 4 }) : v.toLocaleString("tr-TR", { maximumFractionDigits: 8 });
 const rsiBarH = (rsi) => Math.max(14, Math.min(68, (rsi / 100) * 68));
 
-function card(s) {
+function card(s, lastPrice) {
   const fresh = s.isFresh;
   const base = s.symbol.replace("USDT", "");
   const tv = `https://www.tradingview.com/chart/?symbol=BINANCE:${s.symbol}`;
+  const px = lastPrice[s.symbol];
+  const plan = px ? makePlan(s, px) : null;
+  const planHtml = plan ? `
+      <div class="plan">
+        <div class="prow"><span class="plbl">giriş (şimdi)</span><span class="pval">${price(plan.entry)}</span></div>
+        <div class="prow"><span class="plbl">stop</span><span class="pval neg">${price(plan.stop)} <small>(-%${plan.riskPct.toFixed(2)})</small></span></div>
+        <div class="prow"><span class="plbl">hedef</span><span class="pval pos">${price(plan.target)} <small>(+%${plan.rewardPct.toFixed(2)})</small></span></div>
+        <div class="prow"><span class="plbl">risk/ödül</span><span class="pval cy2">1 : ${plan.rr}</span></div>
+      </div>` : `
+      <div class="plan"><div class="prow"><span class="plbl">plan</span><span class="pval">fiyat stopun altında — geçersiz</span></div></div>`;
   return `
   <div class="card ${fresh ? "fresh" : ""}">
     <div class="chead">
@@ -100,6 +114,7 @@ function card(s) {
       <div class="row"><span class="lbl">dip fiyatları</span><span class="val">${price(s.dip1Price)} → ${price(s.dip2Price)}</span></div>
       <div class="row"><span class="lbl">dipler arası</span><span class="val">${s.barsBetween} mum</span></div>
     </div>
+    ${planHtml}
     <div class="cfoot">
       <span class="ts">2. dip: ${fmtTime(s.dip2Time)}</span>
       <a class="tv" href="${tv}" target="_blank" rel="noopener">grafik ↗</a>
@@ -113,7 +128,7 @@ function loadingState(progressLabel) {
 }
 
 async function scan() {
-  if (busy) return;
+  if (busy || !$("scanBtn")) return;
   busy = true;
   $("scanBtn").disabled = true; $("scanBtn").textContent = "taranıyor…";
   clearInterval(timer); clearInterval(countdownTimer);
@@ -130,9 +145,13 @@ async function scan() {
       symbols = await fetchAllUsdtSymbols();
     }
 
-    const { results, errors } = await runPool(symbols, interval, (done, total) => {
+    const { results, errors, lastPrice } = await runPool(symbols, interval, (done, total) => {
       $("countdown").innerHTML = `taranıyor: <b>${done}/${total}</b>`;
     });
+
+    // Taze sinyalleri canli teste otomatik kaydet (ayni sinyal iki kez kaydedilmez)
+    let recorded = 0;
+    try { recorded = recordSignals(window.localStorage, results, lastPrice); } catch {}
 
     results.sort((a, b) => b.dip2Time - a.dip2Time);
     const shown = onlyFresh ? results.filter((s) => s.isFresh) : results;
@@ -141,14 +160,14 @@ async function scan() {
     $("sCount").textContent = shown.length;
     $("sFresh").textContent = results.filter((s) => s.isFresh).length;
     $("sUpd").textContent = fmtClock(Date.now());
-    $("liveTxt").textContent = `canlı · ${interval}`;
+    $("liveTxt").textContent = `canlı · ${interval}` + (recorded ? ` · ${recorded} sinyal teste eklendi` : "");
 
     const c = $("content");
     if (!shown.length) {
       c.innerHTML = `<div class="state"><div class="big">sinyal yok</div>
         seçili kriterlere uyan boğa uyumsuzluğu bulunamadı. zaman dilimini değiştir ya da "sadece taze"yi kapat.</div>`;
     } else {
-      c.innerHTML = `<div class="grid">${shown.map(card).join("")}</div>`;
+      c.innerHTML = `<div class="grid">${shown.map((s) => card(s, lastPrice)).join("")}</div>`;
     }
     if (errors.length) {
       c.innerHTML += `<div class="errbox"><b>${errors.length} sembol çekilemedi:</b><br>${errors.slice(0, 8).join("<br>")}${errors.length > 8 ? "<br>…" : ""}
